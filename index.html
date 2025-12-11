@@ -3,26 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Altair Graph Studio - Flagstar Bank Prototype</title>
+    <title>Altair Graph Studio - Flagstar Bank Knowledge Graph Prototype</title>
+    <script src="https://cdn.jsdelivr.net/npm/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        h1 { color: #2b5f8f; }
-        .info { background: #f0f7ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: #fff;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2b5f8f 0%, #1a3a52 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #network {
+            flex: 1;
+            border: 1px solid #ddd;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin: 20px 0 10px 0;
+            color: #2b5f8f;
+            border-bottom: 2px solid #2b5f8f;
+            padding-bottom: 8px;
+        }
+
+        .sidebar h3 {
+            font-size: 14px;
+            margin: 15px 0 8px 0;
+            color: #555;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .query-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #2b5f8f;
+        }
+
+        .query-section button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #2b5f8f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .query-section button:hover {
+            background: #1a3a52;
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border: 1px solid #b3d9ff;
+        }
+
+        .results h4 {
+            font-size: 13px;
+            color: #2b5f8f;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .result-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e8f0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .metric-value {
+            color: #2b5f8f;
+            font-weight: 600;
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+
+        .info-panel {
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .value-metric {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .value-metric strong {
+            color: #2b5f8f;
+        }
+
+        .recommendation {
+            background: #f3e5f5;
+            padding: 12px;
+            border-left: 4px solid #9c27b0;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
     </style>
 </head>
 <body>
-    <h1>🚀 Altair Graph Studio</h1>
-    <h2>Flagstar Bank Knowledge Graph Prototype</h2>
-    <div class="info">
-        <p><strong>Status:</strong> Repository created successfully!</p>
-        <p>The full interactive prototype will be uploaded shortly.</p>
-        <p>This demo showcases sponsor-to-loan relationships across integrated banking systems.</p>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Flagstar Knowledge Graph</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                Interactive prototype showing sponsor-to-loan relationships across integrated systems
+            </p>
+
+            <div class="info-panel">
+                <strong>💡 What You're Seeing:</strong><br>
+                A live knowledge graph connecting sponsors, borrowers, loans, and markets across three data systems (Legacy Flagstar, NYCB Integration, Signature Acquisition). Click a sponsor node to see their complete portfolio instantly.
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search sponsor name...">
+            </div>
+
+            <div class="query-section">
+                <h3>📊 Quick Queries</h3>
+                <button onclick="queryMetropolisCapital()">Metropolis Capital Portfolio</button>
+                <button onclick="queryConcentration()">Top Sponsors by Exposure</button>
+                <button onclick="queryMarketExposure()">NYC Market Concentration</button>
+                <button onclick="queryOfficeRisk()">Office Property Risk</button>
+                <button onclick="queryAllSponsors()">All Sponsors Overview</button>
+            </div>
+
+            <div id="results" class="results" style="display:none;">
+                <h4>📈 Results</h4>
+                <div id="resultsContent"></div>
+            </div>
+
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>Sponsor (Entity)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ecdc4;"></div>
+                    <span>Borrower (Legal Entity)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #45b7d1;"></div>
+                    <span>Loan</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffa500;"></div>
+                    <span>Property/Market</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #95e1d3;"></div>
+                    <span>Risk Factor</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1>⚙️ Altair Graph Studio Prototype</h1>
+                <p>Flagstar Bank - Unified Knowledge Graph for Multi-Bank Integration</p>
+            </div>
+            <div id="network"></div>
+        </div>
     </div>
+
+    <script>
+        // Sample data representing Flagstar's portfolio
+        const nodes = new vis.DataSet([
+            // Sponsors
+            { id: 'sponsor_metro', label: 'Metropolis Capital', title: 'Sponsor: Metropolis Capital', color: '#ff6b6b', shape: 'box', font: {size: 14, bold: true}, size: 30 },
+            { id: 'sponsor_smith', label: 'Smith Realty Group', title: 'Sponsor: Smith Realty Group', color: '#ff6b6b', shape: 'box', font: {size: 14, bold: true}, size: 28 },
+            { id: 'sponsor_jones', label: 'Jones Development', title: 'Sponsor: Jones Development', color: '#ff6b6b', shape: 'box', font: {size: 14, bold: true}, size: 26 },
+            { id: 'sponsor_elite', label: 'Elite Real Estate', title: 'Sponsor: Elite Real Estate', color: '#ff6b6b', shape: 'box', font: {size: 12, bold: true}, size: 22 },
+
+            // Borrowers under Metropolis
+            { id: 'borrow_metro_1', label: 'Metro MF Fund LP', title: 'Borrower: Metropolis MF Fund', color: '#4ecdc4', shape: 'ellipse', size: 20 },
+            { id: 'borrow_metro_2', label: 'Metro Office Partners', title: 'Borrower: Metro Office Partners', color: '#4ecdc4', shape: 'ellipse', size: 20 },
+            { id: 'borrow_metro_3', label: 'Metropolis Specialty', title: 'Borrower: Metropolis Specialty', color: '#4ecdc4', shape: 'ellipse', size: 18 },
+
+            // Borrowers under Smith
+            { id: 'borrow_smith_1', label: 'Smith MF Holdings', title: 'Borrower: Smith MF Holdings', color: '#4ecdc4', shape: 'ellipse', size: 20 },
+            { id: 'borrow_smith_2', label: 'Smith Commercial', title: 'Borrower: Smith Commercial', color: '#4ecdc4', shape: 'ellipse', size: 18 },
+
+            // Borrowers under Jones
+            { id: 'borrow_jones_1', label: 'Jones Portfolio LLC', title: 'Borrower: Jones Portfolio LLC', color: '#4ecdc4', shape: 'ellipse', size: 18 },
+
+            // Loans under Metropolis
+            { id: 'loan_metro_1', label: 'L-FLG-001\n$25M MF', title: 'Loan L-FLG-001: $25M Multifamily (NYC)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+            { id: 'loan_metro_2', label: 'L-NYCB-042\n$30M Office', title: 'Loan L-NYCB-042: $30M Office (NYC)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+            { id: 'loan_metro_3', label: 'L-SIG-108\n$20M Specialty', title: 'Loan L-SIG-108: $20M Specialty (FL)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+
+            // Loans under Smith
+            { id: 'loan_smith_1', label: 'L-FLG-045\n$28M MF', title: 'Loan L-FLG-045: $28M Multifamily (TX)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+            { id: 'loan_smith_2', label: 'L-NYCB-087\n$35M MF', title: 'Loan L-NYCB-087: $35M Multifamily (NJ)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+
+            // Loans under Jones
+            { id: 'loan_jones_1', label: 'L-SIG-156\n$25M Office', title: 'Loan L-SIG-156: $25M Office (DC)', color: '#45b7d1', shape: 'diamond', size: 18, font: {size: 11} },
+
+            // Properties/Markets
+            { id: 'market_nyc', label: 'NYC Metro Market', title: 'Market: NYC Metro (Stressed)', color: '#ffa500', shape: 'star', size: 25, font: {size: 12, color: 'white'} },
+            { id: 'market_fl', label: 'South Florida', title: 'Market: South Florida (Stable)', color: '#ffa500', shape: 'star', size: 20, font: {size: 11, color: 'white'} },
+            { id: 'market_tx', label: 'Dallas/Houston', title: 'Market: Dallas/Houston (Strong)', color: '#ffa500', shape: 'star', size: 20, font: {size: 11, color: 'white'} },
+            { id: 'market_dc', label: 'Washington DC', title: 'Market: Washington DC (Challenged)', color: '#ffa500', shape: 'star', size: 18, font: {size: 10, color: 'white'} },
+
+            // Risk Factors
+            { id: 'risk_office_stress', label: 'Office Market Stress', title: 'Risk: Office CRE Deterioration', color: '#95e1d3', shape: 'triangle', size: 16 },
+            { id: 'risk_vacancy', label: 'Vacancy Rising', title: 'Risk: Occupancy Rates Down', color: '#95e1d3', shape: 'triangle', size: 14 },
+            { id: 'risk_rates', label: 'Rate Environment', title: 'Risk: Higher Rates', color: '#95e1d3', shape: 'triangle', size: 14 },
+
+            // Systems (annotation)
+            { id: 'system_flg', label: 'Legacy Flagstar\nSystem', title: 'Data System: Legacy Flagstar', color: '#e8f4f8', shape: 'box', x: -400, y: -250, fixed: true, font: {size: 11, color: '#666'}, physics: false },
+            { id: 'system_nycb', label: 'NYCB Integration\nSystem', title: 'Data System: NYCB', color: '#e8f4f8', shape: 'box', x: 0, y: -250, fixed: true, font: {size: 11, color: '#666'}, physics: false },
+            { id: 'system_sig', label: 'Signature Acquisition\nSystem', title: 'Data System: Signature', color: '#e8f4f8', shape: 'box', x: 400, y: -250, fixed: true, font: {size: 11, color: '#666'}, physics: false },
+        ]);
+
+        const edges = new vis.DataSet([
+            // Ownership relationships
+            { from: 'sponsor_metro', to: 'borrow_metro_1', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+            { from: 'sponsor_metro', to: 'borrow_metro_2', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+            { from: 'sponsor_metro', to: 'borrow_metro_3', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+            { from: 'sponsor_smith', to: 'borrow_smith_1', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+            { from: 'sponsor_smith', to: 'borrow_smith_2', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+            { from: 'sponsor_jones', to: 'borrow_jones_1', label: 'owns', font: {size: 10}, color: {color: '#999'} },
+
+            // Loan origination
+            { from: 'borrow_metro_1', to: 'loan_metro_1', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+            { from: 'borrow_metro_2', to: 'loan_metro_2', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+            { from: 'borrow_metro_3', to: 'loan_metro_3', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+            { from: 'borrow_smith_1', to: 'loan_smith_1', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+            { from: 'borrow_smith_1', to: 'loan_smith_2', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+            { from: 'borrow_jones_1', to: 'loan_jones_1', label: 'originates', font: {size: 9}, color: {color: '#bbb'} },
+
+            // Market exposure
+            { from: 'loan_metro_1', to: 'market_nyc', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+            { from: 'loan_metro_2', to: 'market_nyc', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+            { from: 'loan_metro_3', to: 'market_fl', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+            { from: 'loan_smith_1', to: 'market_tx', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+            { from: 'loan_smith_2', to: 'market_nyc', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+            { from: 'loan_jones_1', to: 'market_dc', label: 'located_in', font: {size: 9}, color: {color: '#ddd'} },
+
+            // Risk exposure
+            { from: 'market_nyc', to: 'risk_office_stress', label: 'exposed_to', font: {size: 9}, color: {color: '#ccc'} },
+            { from: 'market_dc', to: 'risk_office_stress', label: 'exposed_to', font: {size: 9}, color: {color: '#ccc'} },
+            { from: 'loan_metro_2', to: 'risk_office_stress', label: 'at_risk_from', font: {size: 9}, color: {color: 'red'} },
+            { from: 'loan_jones_1', to: 'risk_office_stress', label: 'at_risk_from', font: {size: 9}, color: {color: 'red'} },
+        ]);
+
+        const data = { nodes: nodes, edges: edges };
+        const options = {
+            physics: {
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -30000,
+                    centralGravity: 0.3,
+                    springLength: 200
+                },
+                maxVelocity: 50,
+                minVelocity: 0.75,
+                timestep: 0.5,
+                stabilization: { iterations: 200 }
+            },
+            interaction: {
+                hover: true,
+                navigationButtons: true,
+                keyboard: true,
+            },
+            nodes: {
+                font: { size: 16, face: 'Arial' }
+            }
+        };
+
+        const container = document.getElementById('network');
+        const network = new vis.Network(container, data, options);
+
+        // Event listeners
+        network.on('click', function(params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                highlightNode(nodeId);
+                showNodeDetails(nodeId);
+            }
+        });
+
+        function highlightNode(nodeId) {
+            const allNodes = nodes.get({returnType: 'Object'});
+            for (let nodeId in allNodes) {
+                allNodes[nodeId].hidden = false;
+                allNodes[nodeId].opacity = 0.3;
+            }
+            nodes.update(allNodes);
+
+            const connectedNodes = network.getConnectedNodes(nodeId);
+            const allEdges = edges.get({returnType: 'Object'});
+
+            const nodesToShow = [nodeId, ...connectedNodes];
+
+            for (let node of nodesToShow) {
+                allNodes[node].opacity = 1;
+            }
+
+            for (let edgeId in allEdges) {
+                if (connectedNodes.includes(allEdges[edgeId].from) && connectedNodes.includes(allEdges[edgeId].to)) {
+                    allEdges[edgeId].hidden = false;
+                } else if (allEdges[edgeId].from === nodeId || allEdges[edgeId].to === nodeId) {
+                    allEdges[edgeId].hidden = false;
+                } else {
+                    allEdges[edgeId].hidden = true;
+                }
+            }
+
+            nodes.update(allNodes);
+            edges.update(allEdges);
+        }
+
+        function showNodeDetails(nodeId) {
+            const node = nodes.get(nodeId);
+            let html = '<h4>' + node.label + '</h4>';
+
+            if (nodeId === 'sponsor_metro') {
+                html += '<div class="value-metric"><strong>Portfolio Value:</strong> $190M across 9 loans</div>';
+                html += '<div class="value-metric"><strong>Systems:</strong> Flagstar Core, NYCB, Signature</div>';
+                html += '<div class="value-metric"><strong>Concentration Risk:</strong> NYC 71% (HIGH)</strong>';
+                html += '<div class="recommendation"><strong>⚠️ Risk Alert:</strong> Office exposure represents 34% of total portfolio. NYC office market stress = $65M at risk. Recommend enhanced monitoring.</div>';
+            }
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function queryMetropolisCapital() {
+            let html = '<strong>Metropolis Capital Portfolio</strong><br>';
+            html += '<div class="result-item"><strong>Total Exposure:</strong> $190M (9 loans)</div>';
+            html += '<div class="result-item"><strong>Multifamily:</strong> $85M (44%)</div>';
+            html += '<div class="result-item"><strong>Office:</strong> $65M (34%)</div>';
+            html += '<div class="result-item"><strong>Specialty:</strong> $40M (22%)</div>';
+            html += '<div class="result-item"><strong>Geographic:</strong> NYC 71%, FL 21%, Secondary 8%</div>';
+            html += '<div class="recommendation"><strong>System Origins:</strong><br>- $25M from Flagstar Core<br>- $60M from NYCB Integration<br>- $65M from Signature Acquisition<br><br>Before Graph Studio: 5-day manual reconciliation<br>After Graph Studio: 2-minute query</div>';
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+            highlightNode('sponsor_metro');
+        }
+
+        function queryConcentration() {
+            let html = '<strong>Top Sponsors by Portfolio Value</strong><br>';
+            html += '<div class="metric"><span class="metric-label">1. Metropolis Capital</span><span class="metric-value">$190M (45%)</span></div>';
+            html += '<div class="metric"><span class="metric-label">2. Smith Realty Group</span><span class="metric-value">$126M (30%)</span></div>';
+            html += '<div class="metric"><span class="metric-label">3. Jones Development</span><span class="metric-value">$95M (22%)</span></div>';
+            html += '<div class="metric"><span class="metric-label">4. Elite Real Estate</span><span class="metric-value">$28M (7%)</span></div>';
+            html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #b3d9ff;"><strong>Insight:</strong> Top 3 sponsors = 97% of portfolio. Concentration risk HIGH for acquisitions strategy.</div>';
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function queryMarketExposure() {
+            let html = '<strong>NYC Market Concentration</strong><br>';
+            html += '<div class="value-metric"><strong>Total NYC Exposure:</strong> $85M (52% of portfolio)</div>';
+            html += '<div class="metric"><span class="metric-label">Multifamily:</span><span class="metric-value">$55M</span></div>';
+            html += '<div class="metric"><span class="metric-label">Office:</span><span class="metric-value">$30M</span></div>';
+            html += '<div class="recommendation"><strong>Market Stress Factors:</strong><br>- Office occupancy: 78% (declining)<br>- Rent trends: -5% YoY<br>- Contagion risk: $30M office exposure = 35% of NYC loans<br><br>Linked Sponsors: Metropolis Capital, Smith Realty (both exposed)</div>';
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+            highlightNode('market_nyc');
+        }
+
+        function queryOfficeRisk() {
+            let html = '<strong>Office Property Risk Analysis</strong><br>';
+            html += '<div class="value-metric"><strong>Total Office Exposure:</strong> $95M (23% of portfolio)</div>';
+            html += '<div class="metric"><span class="metric-label">Loans at Risk:</span><span class="metric-value">3</span></div>';
+            html += '<div class="metric"><span class="metric-label">Affected Sponsors:</span><span class="metric-value">2 (Metropolis, Jones)</span></div>';
+            html += '<div class="metric"><span class="metric-label">Market Stress Level:</span><span class="metric-value">HIGH</span></div>';
+            html += '<div class="recommendation"><strong>Recommendations:</strong><br>1. Increase monitoring frequency (weekly)<br>2. Prepare loss mitigation strategies<br>3. Consider selective syndication/sales<br>4. De-concentrate office exposure in new originations</div>';
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function queryAllSponsors() {
+            let html = '<strong>Portfolio Overview - All Sponsors</strong><br>';
+            html += '<div class="value-metric"><strong>Total Portfolio Value:</strong> $439M (420 loans)</div>';
+            html += '<div class="metric"><span class="metric-label">Number of Sponsors:</span><span class="metric-value">247</span></div>';
+            html += '<div class="metric"><span class="metric-label">Data Systems Integrated:</span><span class="metric-value">3</span></div>';
+            html += '<div class="metric"><span class="metric-label">Markets Covered:</span><span class="metric-value">47</span></div>';
+            html += '<div class="value-metric" style="margin-top: 10px;"><strong>Concentration:</strong><br>Top 10 sponsors = 58% of portfolio<br>Top 25 sponsors = 75% of portfolio</div>';
+
+            document.getElementById('resultsContent').innerHTML = html;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            if (searchTerm.length > 0) {
+                const allNodes = nodes.get({returnType: 'Object'});
+                for (let nodeId in allNodes) {
+                    if (allNodes[nodeId].label.toLowerCase().includes(searchTerm)) {
+                        highlightNode(nodeId);
+                        showNodeDetails(nodeId);
+                        network.focus(nodeId, {scale: 1.5, animation: true});
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Initial state
+        console.log('Graph Studio Prototype Loaded');
+        console.log('Total Nodes:', nodes.length);
+        console.log('Total Relationships:', edges.length);
+    </script>
 </body>
 </html>
